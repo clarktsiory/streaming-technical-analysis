@@ -1,9 +1,10 @@
-package io.clarktsiory.ta.fs2
+package io.clarktsiory.ta.streams.fs2
 
 import fs2.{Chunk, Scan}
 
 import io.clarktsiory.signals.{RSISignal, ScalarSignal}
-import io.clarktsiory.ta.fs2.RSIChunksState.copyBuffer
+import io.clarktsiory.ta.streams.BufferedIndicator
+import io.clarktsiory.ta.streams.fs2.RSIChunksState.copyBuffer
 import io.clarktsiory.ta.{ComputedIndicator, Indicator}
 
 /** Stateful computation of RSI using a buffer that keeps previous signal values.
@@ -63,7 +64,7 @@ object RSIChunksState:
   def empty(rsi: Indicator.RSI)(using b: BufferedIndicator[Indicator.RSI]): RSIChunksState =
     RSIChunksState(rsi, b)(b.emptyBuffer(), 0)
 
-  def scan(rsi: Indicator.RSI)(using
+  private[fs2] def scan(rsi: Indicator.RSI)(using
     BufferedIndicator[Indicator.RSI],
     ComputedIndicator[Indicator.RSI, Array[Double], Array[Double]],
   ): Scan[RSIChunksState, ScalarSignal, RSISignal] =

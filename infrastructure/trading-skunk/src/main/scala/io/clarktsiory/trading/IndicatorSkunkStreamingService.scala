@@ -12,7 +12,7 @@ import skunk.implicits.*
 
 import io.clarktsiory.signals.*
 import io.clarktsiory.ta.*
-import io.clarktsiory.ta.fs2.*
+import io.clarktsiory.ta.streams.fs2.*
 
 class IndicatorSkunkStreamingService[F[_]: Async](
   signalService: SignalStreamingService[[X] =>> Stream[F, X]],

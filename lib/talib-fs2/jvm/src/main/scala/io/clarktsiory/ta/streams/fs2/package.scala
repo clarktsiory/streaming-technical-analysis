@@ -1,10 +1,11 @@
-package io.clarktsiory.ta.fs2
+package io.clarktsiory.ta.streams.fs2
 
 import fs2.{Pipe, Scan}
 
 import io.clarktsiory.signals.*
 import io.clarktsiory.ta.Indicator
 import io.clarktsiory.ta.given
+import io.clarktsiory.ta.streams.*
 
 given BufferedIndicator[Indicator.RSI] = new RSIBufferedIndicator with MutableSignalBuffer
 given BufferedIndicator[Indicator.MACD] = new MACDBufferedIndicator with MutableSignalBuffer

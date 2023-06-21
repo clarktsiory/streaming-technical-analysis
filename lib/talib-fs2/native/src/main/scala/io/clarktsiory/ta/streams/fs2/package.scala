@@ -1,4 +1,4 @@
-package io.clarktsiory.ta.fs2
+package io.clarktsiory.ta.streams.fs2
 
 import scala.collection.immutable.Queue
 import scala.collection.mutable.ListBuffer
@@ -12,8 +12,9 @@ import cats.syntax.option.*
 import fs2.{Chunk, Pipe, Scan, Stream}
 
 import io.clarktsiory.signals.*
-import io.clarktsiory.ta.fs2.given
 import io.clarktsiory.ta.given
+import io.clarktsiory.ta.streams.*
+import io.clarktsiory.ta.streams.fs2.given
 import io.clarktsiory.ta.{ComputedIndicator, Indicator, IndicatorSig}
 import impl.*
 

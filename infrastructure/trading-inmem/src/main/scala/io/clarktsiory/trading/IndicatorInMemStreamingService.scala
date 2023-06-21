@@ -7,7 +7,7 @@ import fs2.{Pipe, Stream}
 
 import io.clarktsiory.signals.*
 import io.clarktsiory.ta.*
-import io.clarktsiory.ta.fs2.*
+import io.clarktsiory.ta.streams.fs2.*
 
 class IndicatorInMemStreamingService[F[_]: Async](
   topic: Topic[F, (Symbol, Signal)],

@@ -1,4 +1,4 @@
-package io.clarktsiory.ta.fs2
+package io.clarktsiory.ta.streams.fs2
 
 import fs2.Stream
 

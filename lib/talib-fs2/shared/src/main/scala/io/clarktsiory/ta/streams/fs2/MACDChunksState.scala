@@ -1,11 +1,12 @@
-package io.clarktsiory.ta.fs2
+package io.clarktsiory.ta.streams.fs2
 
 import cats.data.State
 import cats.syntax.traverse.*
 import fs2.{Chunk, Scan}
 
 import io.clarktsiory.signals.{MACDSignal, ScalarSignal}
-import io.clarktsiory.ta.fs2.MACDChunksState.copyBuffer
+import io.clarktsiory.ta.streams.BufferedIndicator
+import io.clarktsiory.ta.streams.fs2.MACDChunksState.copyBuffer
 import io.clarktsiory.ta.{ComputedIndicator, Indicator}
 
 /** Stateful computation of MACD using a buffer that keeps previous signal values.
@@ -72,7 +73,7 @@ object MACDChunksState:
   def empty(macd: Indicator.MACD)(using b: BufferedIndicator[Indicator.MACD]): MACDChunksState =
     MACDChunksState(macd, b)(b.emptyBuffer(), 0)
 
-  def scan(macd: Indicator.MACD)(using
+  private[fs2] def scan(macd: Indicator.MACD)(using
     BufferedIndicator[Indicator.MACD],
     ComputedIndicator[Indicator.MACD, Array[
       Double

@@ -127,7 +127,7 @@ lazy val root = tlCrossRootProject
     talibCore.native,
     talibCoreTests.native,
     signalsLib.native,
-    talibStreamFs2.native,
+    talibStreamsFs2.native,
     tradingDomain.native,
     tradingPersistenceSkunk.native,
     exampleSkunkApp.native
@@ -172,22 +172,30 @@ lazy val signalsLib = crossProject(JVMPlatform, NativePlatform)
   .settings(circeDependencies)
   .nativeSettings(commonNativeSettings)
 
-lazy val talibStreamFs2 = crossProject(JVMPlatform, NativePlatform)
+lazy val talibStreams = crossProject(JVMPlatform, NativePlatform)
+  .crossType(CrossType.Full)
+  .in(file("lib/talib-streams"))
+  .settings(moduleName := "talib-streams", name := "Talib streams")
+  .settings(sharedSettings)
+  .dependsOn(talibCore, signalsLib)
+  .nativeSettings(commonNativeSettings)
+
+lazy val talibStreamsFs2 = crossProject(JVMPlatform, NativePlatform)
   .crossType(CrossType.Full)
   .in(file("lib/talib-fs2"))
   .settings(moduleName := "talib-streams-fs2", name := "Talib streams fs2")
   .settings(sharedSettings)
   .settings(fs2Dependencies)
-  .dependsOn(talibCore, signalsLib)
-  .nativeSettings(commonNativeSettings, testingNativeSettings)
+  .dependsOn(talibCore, signalsLib, talibStreams)
+  .nativeSettings(commonNativeSettings)
 
-lazy val talibStreamFs2Tests = crossProject(JVMPlatform, NativePlatform)
+lazy val talibStreamsFs2Tests = crossProject(JVMPlatform, NativePlatform)
   .crossType(CrossType.Full)
   .in(file("lib/talib-fs2-tests"))
   .settings(moduleName := "talib-streams-fs2-tests", name := "Talib streams fs2 tests")
   .settings(sharedSettings)
   .settings(fs2Dependencies, testingJUnitSettings)
-  .dependsOn(talibStreamFs2)
+  .dependsOn(talibStreamsFs2)
   .nativeSettings(commonNativeSettings, testingNativeSettings)
 
 
@@ -206,7 +214,7 @@ lazy val tradingPersistenceInMemory = crossProject(JVMPlatform, NativePlatform)
   .settings(moduleName := "trading-persistence-in-memory", name := "Trading persistence in memory")
   .settings(sharedSettings)
   .settings(loggingDependencies, catsEffectOverrideDependencies)
-  .dependsOn(talibCore, talibStreamFs2, tradingDomain)
+  .dependsOn(talibCore, talibStreamsFs2, tradingDomain)
   .nativeSettings(commonNativeSettings)
 
 lazy val tradingPersistenceSkunk = crossProject(JVMPlatform, NativePlatform)
@@ -215,7 +223,7 @@ lazy val tradingPersistenceSkunk = crossProject(JVMPlatform, NativePlatform)
   .settings(moduleName := "trading-persistence-skunk", name := "Trading persistence skunk")
   .settings(sharedSettings)
   .settings(skunkDependencies, loggingDependencies, catsEffectOverrideDependencies)
-  .dependsOn(talibCore, talibStreamFs2, tradingDomain)
+  .dependsOn(talibCore, talibStreamsFs2, tradingDomain)
   .nativeSettings(commonNativeSettings)
   .enablePlugins(NoPublishPlugin)
 

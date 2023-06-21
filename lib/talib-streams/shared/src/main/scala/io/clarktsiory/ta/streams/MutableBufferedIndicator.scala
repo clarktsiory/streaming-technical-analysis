@@ -1,4 +1,4 @@
-package io.clarktsiory.ta.fs2
+package io.clarktsiory.ta.streams
 
 import scala.collection.mutable.ListBuffer
 
