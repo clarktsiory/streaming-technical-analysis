@@ -281,6 +281,8 @@ class IndicatorStreamingFS2Test {
         inputSingleChunk.map(_.value.doubleValue).compile.toVector.unsafeRunSync().toArray,
       )
 
+    assertEquals(1, inputSingleChunk.chunks.compile.count.unsafeRunSync())
+
     val RMSE_deviation = 0.01 // means that standard deviation of the error is 0.01
     val result = output.compile.toList.unsafeRunSync()
 

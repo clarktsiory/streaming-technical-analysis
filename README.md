@@ -15,6 +15,9 @@ The [talib-core-tests](/lib/talib-core-tests/) module provides tests for the cor
 - [talib-streams-fs2](/lib/talib-fs2/) provides streaming adapters for the [fs2](https://fs2.io/) library using the _fs2_ API.
 The [talib-streams-fs2-tests](/lib/talib-fs2-tests/) module provides tests for the fs2 module, to test the accuracy of the computations for each indicator, on any platform. The measured accuracy is compared to the accuracy of the batch computation of the indicator, which is the reference for the accuracy of the indicator.
 
+- [talib-streams-zio](/lib/talib-zio/) provides streaming adapters for the [zio](https://zio.dev/) library using the _zio_ API.
+The [talib-streams-zio-tests](/lib/talib-zio-tests/) module provides tests for the zio module, in an analogous way to the fs2 module.
+
 - [signals](/lib/signals/) provides data types for type-safety when manipulating indicator inputs and outputs. Each indicator has its associated signal type, which simply contains as many output values as the indicator has outputs. It introduces concepts from trading signals, such as 'ohlc' (open-high-low-close), for which the streaming modules may provide helpers to compute indicators on.
 
 
@@ -66,7 +69,7 @@ Currently the roadmap is very open, and the project is in its early stages. The 
 
 ## Special thanks to community
 
-Thanks to maintainers of the [cats-effect](https://typelevel.org/cats-effect/) library, the [fs2](https://fs2.io/), and the [http4s](https://http4s.org/) libraries that made the [cross-platform capabilities](https://typelevel.org/blog/2022/09/19/typelevel-native.html) possible.
+Thanks to maintainers of the [cats-effect](https://typelevel.org/cats-effect/) library, the [fs2](https://fs2.io/), and the [http4s](https://http4s.org/) libraries that made the [cross-platform capabilities](https://typelevel.org/blog/2022/09/19/typelevel-native.html) possible, also for the [zio](https://zio.dev/) library that cross-builds to Scala Native and JVM.
 
 
 ## License

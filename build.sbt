@@ -122,12 +122,21 @@ lazy val talibDependencies = Seq(
   )
 )
 
+lazy val zioDependencies = Seq(
+  libraryDependencies ++= Seq(
+    "dev.zio" %%% "zio" % "2.0.14",
+    "dev.zio" %%% "zio-streams" % "2.0.14"
+  )
+)
+
 lazy val root = tlCrossRootProject
   .aggregate(
     talibCore.native,
     talibCoreTests.native,
     signalsLib.native,
+    talibStreams.native,
     talibStreamsFs2.native,
+    talibStreamsZIO.native,
     tradingDomain.native,
     tradingPersistenceSkunk.native,
     exampleSkunkApp.native
@@ -198,6 +207,23 @@ lazy val talibStreamsFs2Tests = crossProject(JVMPlatform, NativePlatform)
   .dependsOn(talibStreamsFs2)
   .nativeSettings(commonNativeSettings, testingNativeSettings)
 
+lazy val talibStreamsZIO = crossProject(JVMPlatform, NativePlatform)
+  .crossType(CrossType.Full)
+  .in(file("lib/talib-zio"))
+  .settings(moduleName := "talib-streams-zio", name := "Talib streams ZIO")
+  .settings(sharedSettings)
+  .settings(zioDependencies)
+  .dependsOn(talibCore, signalsLib, talibStreams)
+  .nativeSettings(commonNativeSettings, testingNativeSettings)
+
+lazy val talibStreamsZIOTests = crossProject(JVMPlatform, NativePlatform)
+  .crossType(CrossType.Full)
+  .in(file("lib/talib-zio-tests"))
+  .settings(moduleName := "talib-streams-zio-tests", name := "Talib streams ZIO tests")
+  .settings(sharedSettings)
+  .settings(zioDependencies, testingJUnitSettings)
+  .dependsOn(talibStreamsZIO)
+  .nativeSettings(commonNativeSettings, testingNativeSettings)
 
 lazy val tradingDomain = crossProject(JVMPlatform, NativePlatform)
   .crossType(CrossType.Pure)

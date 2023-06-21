@@ -1,28 +1,31 @@
-package io.clarktsiory.ta.streams.fs2
+package io.clarktsiory.ta.streams.zio
 
 import java.time.LocalDateTime
+import java.util.concurrent.Semaphore
 
-import cats.effect.SyncIO
-import cats.effect.std.Random
 import org.junit.Assert.*
-import org.junit.Test
+import org.junit.{AfterClass, Test}
+import zio.*
+import zio.stream.{ZSink, ZStream => Stream}
 
 import io.clarktsiory.signals.*
 import io.clarktsiory.ta.given
 import io.clarktsiory.ta.streams.BufferedIndicator
 import io.clarktsiory.ta.{ComputedIndicator, Indicator}
 
-class IndicatorStreamingFS2Test {
-  import fs2.{Chunk, Stream}
+class IndicatorStreamingZIOTest {
+  import IndicatorStreamingZIOTest.*
 
   val startDate = LocalDateTime.of(1970, 1, 1, 8, 0, 0)
-  val dateStream = Stream.iterate(startDate)(_.plusHours(1)).buffer(10)
+  val dateStream = Stream.iterate(startDate)(_.plusHours(1)).buffer(16)
+  given runtime: Runtime[Any] = Runtime.default
 
   @Test def RSI2_pipe_should_have_the_right_time_1_chunk(): Unit = {
     val inputStream =
       dateStream.zipWith(Stream(3, 2, 3.4, 4.8, 5.9, 6.1, 4.5, 4.9, 4.6))(ScalarSignal(_, _))
+        .rechunk(16)
 
-    val outputStream = inputStream.through(Indicator.RSI(2).asPipe)
+    val outputStream = inputStream.via(Indicator.RSI(2).asPipeline)
 
     val expectedStream =
       dateStream
@@ -32,22 +35,21 @@ class IndicatorStreamingFS2Test {
             27.71739130434782, 46.3709677419355, 33.43023255813953)
         )(RSISignal(_, _))
 
-    val output = outputStream.compile.toList
-    val expected = expectedStream.compile.toList
+    val output = outputStream.collectToList.unsafeRun()
+    val expected = expectedStream.collectToList.unsafeRun()
 
     expected.zip(output).zipWithIndex.foreach { case ((e, o), i) =>
       assertEquals("Index: " + i, e, o)
     }
-    assertEquals(1, inputStream.chunks.compile.count)
+    assertEquals(1, inputStream.countChunks.unsafeRun())
   }
 
   @Test def RSI2_pipe_should_have_the_right_time_2_chunks(): Unit = {
     val inputStream =
-      dateStream.zipWith(
-        Stream(3, 2, 3.4, 4.8, 5.9) ++ Stream(6.1, 4.5, 4.9, 4.6)
-      )(ScalarSignal(_, _))
+      dateStream.zipWith(Stream(3, 2, 3.4, 4.8, 5.9, 6.1, 4.5, 4.9, 4.6))(ScalarSignal(_, _))
+        .rechunk(5)
 
-    val outputStream = inputStream.through(Indicator.RSI(2).asPipe)
+    val outputStream = inputStream.via(Indicator.RSI(2).asPipeline)
 
     val expectedStream =
       dateStream
@@ -57,22 +59,21 @@ class IndicatorStreamingFS2Test {
             27.71739130434782, 46.3709677419355, 33.43023255813953)
         )(RSISignal(_, _))
 
-    val output = outputStream.compile.toList
-    val expected = expectedStream.compile.toList
+    val output = outputStream.collectToList.unsafeRun()
+    val expected = expectedStream.collectToList.unsafeRun()
 
     expected.zip(output).zipWithIndex.foreach { case ((e, o), i) =>
       assertEquals("Index: " + i, e, o)
     }
-    assertEquals(2, inputStream.chunks.compile.count)
+    assertEquals(2, inputStream.countChunks.unsafeRun())
   }
 
   @Test def RSI2_pipe_should_have_the_right_time_3_chunks(): Unit = {
     val inputStream =
-      dateStream.zipWith(
-        Stream(3.0) ++ Stream(2, 3.4, 4.8) ++ Stream(5.9, 6.1, 4.5, 4.9, 4.6)
-      )(ScalarSignal(_, _))
+      dateStream.zipWith(Stream(3, 2, 3.4, 4.8, 5.9, 6.1, 4.5, 4.9, 4.6))(ScalarSignal(_, _))
+        .rechunk(3)
 
-    val outputStream = inputStream.through(Indicator.RSI(2).asPipe)
+    val outputStream = inputStream.via(Indicator.RSI(2).asPipeline)
 
     val expectedStream =
       dateStream
@@ -82,13 +83,13 @@ class IndicatorStreamingFS2Test {
             27.71739130434782, 46.3709677419355, 33.43023255813953)
         )(RSISignal(_, _))
 
-    val output = outputStream.compile.toList
-    val expected = expectedStream.compile.toList
+    val output = outputStream.collectToList.unsafeRun()
+    val expected = expectedStream.collectToList.unsafeRun()
 
     expected.zip(output).zipWithIndex.foreach { case ((e, o), i) =>
       assertEquals("Index: " + i, e, o)
     }
-    assertEquals(3, inputStream.chunks.compile.count)
+    assertEquals(3, inputStream.countChunks.unsafeRun())
   }
 
   @Test def RSI16_pipe_should_have_the_right_output_long_sequence_100_input(): Unit = {
@@ -120,10 +121,10 @@ class IndicatorStreamingFS2Test {
           1.0964913035065915, 6.2744604170309, 7.920793643629641, 4.22159966799684,
           0.6352770615195713, 3.816192865065368, 9.961213802400968, 5.29114345099137,
           9.710783776136182, 8.60779702234498, 0.11481021942819636, 7.207218193601946,
-        ).chunkN(5, allowFewer = false).flatMap(Stream.chunk(_))
-      )(ScalarSignal(_, _))
+        )
+      )(ScalarSignal(_, _)).rechunk(5)
 
-    val outputStream = inputStream.through(Indicator.RSI(16).asPipe)
+    val outputStream = inputStream.via(Indicator.RSI(16).asPipeline)
 
     // Hard-coded values extracted from a TA-Lib interactive session
     val expectedStream =
@@ -155,13 +156,13 @@ class IndicatorStreamingFS2Test {
           )
         )(RSISignal(_, _))
 
-    val output = outputStream.compile.toList
-    val expected = expectedStream.compile.toList
+    val output = outputStream.collectToList.unsafeRun()
+    val expected = expectedStream.collectToList.unsafeRun()
 
     expected.zip(output).zipWithIndex.foreach { case ((e, o), i) =>
       assertEquals("Index: " + i, e, o)
     }
-    assertEquals(20, inputStream.chunks.compile.count)
+    assertEquals(20, inputStream.countChunks.unsafeRun())
   }
 
   @Test def RSI16_pipe_should_have_the_right_output_long_sequence_random_input(): Unit = {
@@ -170,42 +171,41 @@ class IndicatorStreamingFS2Test {
     val N = BufferedIndicator[Indicator.RSI].bufferSize(rsi) + rsi.timeperiod * 10
     val bufferN = 10
     // beware this is an infinite stream, you should #take(N) it
-    val inputStream: Stream[SyncIO, ScalarSignal] =
+    val inputStream: Stream[Any, Nothing, ScalarSignal] =
       for
-        r <- Stream.eval(Random.scalaUtilRandomSeedInt[SyncIO](42))
-        chunk <- dateStream
-          .zipWith(Stream.repeatEval(r.nextGaussian))(ScalarSignal(_, _))
-          .chunkN(bufferN, false)
-        ret <- Stream.chunk(chunk)
+        r <- Stream.fromZIO(Random.setSeed(42))
+        ret <- dateStream
+          .zipWith(Stream.repeatZIO(Random.nextGaussian))(ScalarSignal(_, _))
+          .rechunk(bufferN)
       yield ret
 
-    val outputStream = inputStream.through(rsi.asPipe).take(N)
+    val outputStream = inputStream.via(rsi.asPipeline).take(N)
 
     val expectedStreamDates = dateStream.take(N).drop(rsi.timeperiod)
 
     // Time testing
-    val outputTime = outputStream.compile.toList.unsafeRunSync().map(_.time)
-    val expectedTime = expectedStreamDates.compile.toList
+    val outputTime = outputStream.collectToList.unsafeRun().map(_.time)
+    val expectedTime = expectedStreamDates.collectToList.unsafeRun()
 
     expectedTime.zip(outputTime).zipWithIndex.foreach { case ((e, o), i) =>
       assertEquals("Index: " + i, e, o)
     }
 
     // Value testing: compare to when input is a single chunk, thus RSI can be computed without buffering
-    val inputSingleChunk = inputStream.take(N).chunkAll.flatMap(Stream.chunk(_))
+    val inputSingleChunk = inputStream.take(N).rechunk(N)
     val output =
-      inputSingleChunk.through(rsi.asPipe).collect { case s: RSISignal => s.value.toDouble }
+      inputSingleChunk.via(rsi.asPipeline).collect { case s: RSISignal => s.value.toDouble }
     val expected = ComputedIndicator[Indicator.RSI, Array[Double], Array[Double]]
       .compute(
         rsi,
-        inputSingleChunk.map(_.value.doubleValue).compile.toVector.unsafeRunSync().toArray,
+        inputSingleChunk.map(_.value.doubleValue).collectToVector.unsafeRun().toArray,
       )
       .toList
 
     // TODO: compute a statistical variance and standard deviation to use as epsilon. epsilon on individual value may fail
     val epsilon = 0.01 // this value may be to high if RSI buffer size gets smaller
-    assertEquals(1, inputSingleChunk.chunks.compile.count.unsafeRunSync())
-    expected.zip(output.compile.toList.unsafeRunSync()).zipWithIndex.foreach { case ((e, o), i) =>
+    assertEquals(1, inputSingleChunk.countChunks.unsafeRun())
+    expected.zip(output.collectToList.unsafeRun()).zipWithIndex.foreach { case ((e, o), i) =>
       assertEquals(e, o, epsilon)
     }
   }
@@ -213,8 +213,9 @@ class IndicatorStreamingFS2Test {
   @Test def MACD_pipe_should_have_the_right_time_1_chunk(): Unit = {
     val inputStream =
       dateStream.zipWith(Stream(3, 2, 3.4, 4.8, 5.9, 6.1, 4.5, 4.9, 4.6))(ScalarSignal(_, _))
+        .rechunk(16)
 
-    val outputStream = inputStream.through(Indicator.MACD(2, 4, 3).asPipe)
+    val outputStream = inputStream.via(Indicator.MACD(2, 4, 3).asPipeline)
 
     val expectedStream =
       dateStream
@@ -228,13 +229,13 @@ class IndicatorStreamingFS2Test {
           )
         ) { case (d, (v, s, h)) => MACDSignal(d, value = v, signal = s, histogram = h) }
 
-    val output = outputStream.compile.toList
-    val expected = expectedStream.compile.toList
+    val output = outputStream.collectToList.unsafeRun()
+    val expected = expectedStream.collectToList.unsafeRun()
 
     expected.zip(output).zipWithIndex.collect {
       case ((e, MACDSignal(time, signal, value, histogram)), i) =>
         def message(key: Option[String] = None) =
-          "Index: " + i + ", time: " + e.time + key.map(", " + _).getOrElse("")
+          s"Index: $i, time: ${e.time}${key.map(", " + _).getOrElse("")}"
         assertEquals(message(), e.time, time)
         assertEquals(message(Some("value")), e.value, value)
         assertEquals(message(Some("signal")), e.signal, signal)
@@ -245,7 +246,7 @@ class IndicatorStreamingFS2Test {
           if i == 3 then 0.2 else 0,
         ) // weird runtime precision error
     }
-    assertEquals(1, inputStream.chunks.compile.count)
+    assertEquals(1, inputStream.countChunks.unsafeRun())
   }
 
   @Test def MACD_pipe_should_have_the_right_time_long_sequence_random_input(): Unit = {
@@ -254,32 +255,31 @@ class IndicatorStreamingFS2Test {
     val N = BufferedIndicator[Indicator.MACD].bufferSize(macd) + macd.signalPeriod * 10
     val bufferN = 10
     // beware this is an infinite stream, you should #take(N) it
-    val inputStream: Stream[SyncIO, ScalarSignal] =
+    val inputStream: Stream[Any, Throwable, ScalarSignal] =
       for
-        r <- Stream.eval(Random.scalaUtilRandomSeedInt[SyncIO](42))
-        chunk <- dateStream
-          .zipWith(Stream.repeatEval(r.nextGaussian))(ScalarSignal(_, _))
-          .chunkN(bufferN, false)
-        ret <- Stream.chunk(chunk)
+        r <- Stream.fromZIO(Random.setSeed(42))
+        ret <- dateStream
+          .zipWith(Stream.repeatZIO(Random.nextGaussian))(ScalarSignal(_, _))
+          .rechunk(bufferN)
       yield ret
 
     val expectedStreamDates =
       dateStream.take(N).drop(BufferedIndicator[Indicator.MACD].minComputationSize(macd) - 1)
 
-    val inputSingleChunk = inputStream.take(N).chunkAll.flatMap(Stream.chunk(_))
-    val output = inputSingleChunk.through(macd.asPipe).collect { case s: MACDSignal => s }
+    val inputSingleChunk = inputStream.take(N).rechunk(N)
+    val output = inputSingleChunk.via(macd.asPipeline).collect { case s: MACDSignal => s }
     val expected = ComputedIndicator[Indicator.MACD, Array[
       Double
     ], (Array[Double], Array[Double], Array[Double])]
       .compute(
         macd,
-        inputSingleChunk.map(_.value.doubleValue).compile.toVector.unsafeRunSync().toArray,
+        inputSingleChunk.map(_.value.doubleValue).collectToVector.unsafeRun().toArray,
       )
 
-    assertEquals(1, inputSingleChunk.chunks.compile.count.unsafeRunSync())
+    assertEquals(1, inputSingleChunk.countChunks.unsafeRun())
 
     val RMSE_deviation = 0.01 // means that standard deviation of the error is 0.01
-    val result = output.compile.toList.unsafeRunSync()
+    val result = output.collectToList.unsafeRun()
 
     val valueDeviation = Math.sqrt(
       (expected._1
@@ -288,7 +288,6 @@ class IndicatorStreamingFS2Test {
         .map(_.pow(2))
         .sum / expected._1.length).doubleValue
     )
-
     assertTrue(s"MACD value deviation: $valueDeviation", valueDeviation <= RMSE_deviation)
 
     val signalDeviation = Math.sqrt(
@@ -307,7 +306,33 @@ class IndicatorStreamingFS2Test {
         .map(_.pow(2))
         .sum / expected._3.length).doubleValue
     )
+    assertTrue(
+      s"MACD histogram deviation: $histogramDeviation",
+      histogramDeviation <= RMSE_deviation,
+    )
 
   }
+
+}
+
+object IndicatorStreamingZIOTest {
+  extension [A](z: Task[A])
+    def unsafeRun()(using runtime: Runtime[Any]): A =
+      Unsafe.unsafe(implicit unsafe =>
+        runtime.unsafe.run(z).getOrThrow()
+      )
+    end unsafeRun
+  end extension
+
+  extension [E, A](stream: Stream[Any, E, A])
+    def collectToList: ZIO[Any, E, List[A]] =
+      stream.run(ZSink.collectAll[A]).map(_.toList)
+
+    def collectToVector: ZIO[Any, E, Vector[A]] =
+      stream.run(ZSink.collectAll[A]).map(_.toVector)
+
+    def countChunks: ZIO[Any, E, Long] =
+      stream.chunks.run(ZSink.count)
+  end extension
 
 }
